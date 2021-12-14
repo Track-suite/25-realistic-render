@@ -44,26 +44,60 @@ window.addEventListener('resize', () =>
 })
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
+import { loader } from 'mini-css-extract-plugin'
 
 // ...
+const loader = new DRACOLoader();
+
+loader.setDecoderPath( '/examples/js/libs/draco/' );
+
+loader.preload();
+
+// Load a Draco geometry
+loader.load(
+	// resource URL
+	'model.drc',
+	// called when the resource is loaded
+	function ( geometry ) {
+
+		const material = new THREE.MeshStandardMaterial( { color: 0x606060 } );
+		const mesh = new THREE.Mesh( geometry, material );
+		scene.add( mesh );
+
+	},
+	// called as loading progresses
+	function ( xhr ) {
+
+		console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+
+	},
+	// called when loading has errors
+	function ( error ) {
+
+		console.log( 'An error happened' );
+
+	}
+);
 
 /**
  * Loaders
  */
 const gltfLoader = new GLTFLoader()
 
+
+
 /**
  * Models
  */
  gltfLoader.load(
-    '/models/FlightHelmet/glTF/FlightHelmet.gltf',
+    '/models/hamburger2.glb',
     (gltf) =>
     {
-        gltf.scene.scale.set(10, 10, 10)
-        gltf.scene.position.set(0, - 4, 0)
-        gltf.scene.rotation.y = Math.PI * 0.5
+        gltf.scene.scale.set(0.3, 0.3, 0.3)
+        gltf.scene.position.set(0, - 1, 0)
         scene.add(gltf.scene)
-        gui.add(gltf.scene.rotation, 'y').min(- Math.PI).max(Math.PI).step(0.001).name('rotation')
+
         updateAllMaterials()
     }
 )
@@ -77,7 +111,13 @@ const cubeTextureLoader = new THREE.CubeTextureLoader()
  */
 const directionalLight = new THREE.DirectionalLight('#ffffff',3)
 directionalLight.position.set(0.25, 3, - 2.25)
+directionalLight.castShadow = true
+directionalLight.shadow.camera.far = 15
+directionalLight.shadow.mapSize.set(1024, 1024)
 scene.add(directionalLight)
+
+const directionalLightCameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera)
+// scene.add(directionalLightCameraHelper)
 
 /**
  * Update all materials
@@ -90,6 +130,8 @@ scene.add(directionalLight)
          {
              child.material.envMap = environmentMap
              child.material.envMapIntensity = debugObject.envMapIntensity
+             child.castShadow = true
+             child.receiveShadow = true
              
          }
 
@@ -130,31 +172,37 @@ controls.enableDamping = true
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
+    canvas: canvas,
+    antialias: true
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.physicallyCorrectLights = true
 renderer.outputEncoding = THREE.sRGBEncoding
 renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFShadowMap
 
 //GUIs
 gui.add(directionalLight, 'intensity').min(0).max(10).step(0.001).name('lightIntensity')
 gui.add(directionalLight.position, 'x').min(- 5).max(5).step(0.001).name('lightX')
 gui.add(directionalLight.position, 'y').min(- 5).max(5).step(0.001).name('lightY')
 gui.add(directionalLight.position, 'z').min(- 5).max(5).step(0.001).name('lightZ')
-gui.add(renderer, 'toneMapping', {
-    No: THREE.NoToneMapping,
-    Linear: THREE.LinearToneMapping,
-    Reinhard: THREE.ReinhardToneMapping,
-    Cineon: THREE.CineonToneMapping,
-    ACESFilmic: THREE.ACESFilmicToneMapping
-})
-.onFinishChange(() =>
-    {
-        renderer.toneMapping = Number(renderer.toneMapping)
+gui.
+    add(renderer, 'toneMapping', {
+        No: THREE.NoToneMapping,
+        Linear: THREE.LinearToneMapping,
+        Reinhard: THREE.ReinhardToneMapping,
+        Cineon: THREE.CineonToneMapping,
+        ACESFilmic: THREE.ACESFilmicToneMapping
     })
-
+    .onFinishChange(() =>
+        {
+            renderer.toneMapping = Number(renderer.toneMapping)
+            updateAllMaterials
+        })
+        gui.add(renderer, 'toneMappingExposure').min(0).max(10).step(0.001)
+       
 /**
  * Animate
  */
